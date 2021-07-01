@@ -3,7 +3,9 @@ import {
 	setupScratch,
 	teardown,
 	sortAttributes,
-	serializeHtml
+	serializeHtml,
+	spyOnElementAttributes,
+	createEvent
 } from '../_util/helpers';
 import { ul, li, div } from '../_util/dom';
 import { logCall, clearLog, getLog } from '../_util/logCall';
@@ -11,22 +13,43 @@ import { logCall, clearLog, getLog } from '../_util/logCall';
 /** @jsx createElement */
 
 describe('hydrate()', () => {
+	/** @type {HTMLElement} */
 	let scratch;
+	let attributesSpy;
 
 	const List = ({ children }) => <ul>{children}</ul>;
-	const ListItem = ({ children }) => <li>{children}</li>;
+	const ListItem = ({ children, onClick = null }) => (
+		<li onClick={onClick}>{children}</li>
+	);
+
+	let resetAppendChild;
+	let resetInsertBefore;
+	let resetRemoveChild;
+	let resetRemove;
+	let resetSetAttribute;
+	let resetRemoveAttribute;
 
 	before(() => {
-		logCall(Element.prototype, 'appendChild');
-		logCall(Element.prototype, 'insertBefore');
-		logCall(Element.prototype, 'removeChild');
-		logCall(Element.prototype, 'remove');
-		logCall(Element.prototype, 'setAttribute');
-		logCall(Element.prototype, 'removeAttribute');
+		resetAppendChild = logCall(Element.prototype, 'appendChild');
+		resetInsertBefore = logCall(Element.prototype, 'insertBefore');
+		resetRemoveChild = logCall(Element.prototype, 'removeChild');
+		resetRemove = logCall(Element.prototype, 'remove');
+		resetSetAttribute = logCall(Element.prototype, 'setAttribute');
+		resetRemoveAttribute = logCall(Element.prototype, 'removeAttribute');
+	});
+
+	after(() => {
+		resetAppendChild();
+		resetInsertBefore();
+		resetRemoveChild();
+		resetRemove();
+		resetSetAttribute();
+		resetRemoveAttribute();
 	});
 
 	beforeEach(() => {
 		scratch = setupScratch();
+		attributesSpy = spyOnElementAttributes();
 	});
 
 	afterEach(() => {
@@ -35,6 +58,7 @@ describe('hydrate()', () => {
 	});
 
 	it('should reuse existing DOM', () => {
+		const onClickSpy = sinon.spy();
 		const html = ul([li('1'), li('2'), li('3')]);
 
 		scratch.innerHTML = html;
@@ -44,16 +68,22 @@ describe('hydrate()', () => {
 			<ul>
 				<li>1</li>
 				<li>2</li>
-				<li>3</li>
+				<li onClick={onClickSpy}>3</li>
 			</ul>,
 			scratch
 		);
 
 		expect(scratch.innerHTML).to.equal(html);
 		expect(getLog()).to.deep.equal([]);
+		expect(onClickSpy).not.to.have.been.called;
+
+		scratch.querySelector('li:last-child').dispatchEvent(createEvent('click'));
+
+		expect(onClickSpy).to.have.been.called.calledOnce;
 	});
 
 	it('should reuse existing DOM when given components', () => {
+		const onClickSpy = sinon.spy();
 		const html = ul([li('1'), li('2'), li('3')]);
 
 		scratch.innerHTML = html;
@@ -63,13 +93,47 @@ describe('hydrate()', () => {
 			<List>
 				<ListItem>1</ListItem>
 				<ListItem>2</ListItem>
-				<ListItem>3</ListItem>
+				<ListItem onClick={onClickSpy}>3</ListItem>
 			</List>,
 			scratch
 		);
 
 		expect(scratch.innerHTML).to.equal(html);
 		expect(getLog()).to.deep.equal([]);
+		expect(onClickSpy).not.to.have.been.called;
+
+		scratch.querySelector('li:last-child').dispatchEvent(createEvent('click'));
+
+		expect(onClickSpy).to.have.been.called.calledOnce;
+	});
+
+	it('should properly set event handlers to existing DOM when given components', () => {
+		const proto = Element.prototype;
+		sinon.spy(proto, 'addEventListener');
+
+		const clickHandlers = [sinon.spy(), sinon.spy(), sinon.spy()];
+
+		const html = ul([li('1'), li('2'), li('3')]);
+
+		scratch.innerHTML = html;
+		clearLog();
+
+		hydrate(
+			<List>
+				<ListItem onClick={clickHandlers[0]}>1</ListItem>
+				<ListItem onClick={clickHandlers[1]}>2</ListItem>
+				<ListItem onClick={clickHandlers[2]}>3</ListItem>
+			</List>,
+			scratch
+		);
+
+		expect(scratch.innerHTML).to.equal(html);
+		expect(getLog()).to.deep.equal([]);
+		expect(proto.addEventListener).to.have.been.calledThrice;
+		expect(clickHandlers[2]).not.to.have.been.called;
+
+		scratch.querySelector('li:last-child').dispatchEvent(createEvent('click'));
+		expect(clickHandlers[2]).to.have.been.calledOnce;
 	});
 
 	it('should add missing nodes to existing DOM when hydrating', () => {
@@ -129,6 +193,11 @@ describe('hydrate()', () => {
 		clearLog();
 		hydrate(vnode, scratch);
 
+		// IE11 doesn't support spying on Element.prototype
+		if (!/Trident/.test(navigator.userAgent)) {
+			expect(attributesSpy.get).to.not.have.been.called;
+		}
+
 		expect(serializeHtml(scratch)).to.equal(
 			sortAttributes(
 				'<div><span before-hydrate="test" different-value="a" same-value="foo">Test</span></div>'
@@ -149,20 +218,29 @@ describe('hydrate()', () => {
 		scratch.innerHTML = html;
 		clearLog();
 
+		const clickHandlers = [sinon.spy(), sinon.spy(), sinon.spy(), sinon.spy()];
+
 		hydrate(
 			<List>
-				<ListItem>1</ListItem>
+				<ListItem onClick={clickHandlers[0]}>1</ListItem>
 				<Fragment>
-					<ListItem>2</ListItem>
-					<ListItem>3</ListItem>
+					<ListItem onClick={clickHandlers[1]}>2</ListItem>
+					<ListItem onClick={clickHandlers[2]}>3</ListItem>
 				</Fragment>
-				<ListItem>4</ListItem>
+				<ListItem onClick={clickHandlers[3]}>4</ListItem>
 			</List>,
 			scratch
 		);
 
 		expect(scratch.innerHTML).to.equal(html);
 		expect(getLog()).to.deep.equal([]);
+		expect(clickHandlers[2]).not.to.have.been.called;
+
+		scratch
+			.querySelector('li:nth-child(3)')
+			.dispatchEvent(createEvent('click'));
+
+		expect(clickHandlers[2]).to.have.been.called.calledOnce;
 	});
 
 	it('should correctly hydrate root Fragments', () => {
@@ -174,23 +252,44 @@ describe('hydrate()', () => {
 		scratch.innerHTML = html;
 		clearLog();
 
+		const clickHandlers = [
+			sinon.spy(),
+			sinon.spy(),
+			sinon.spy(),
+			sinon.spy(),
+			sinon.spy()
+		];
+
 		hydrate(
 			<Fragment>
 				<List>
 					<Fragment>
-						<ListItem>1</ListItem>
-						<ListItem>2</ListItem>
+						<ListItem onClick={clickHandlers[0]}>1</ListItem>
+						<ListItem onClick={clickHandlers[1]}>2</ListItem>
 					</Fragment>
-					<ListItem>3</ListItem>
-					<ListItem>4</ListItem>
+					<ListItem onClick={clickHandlers[2]}>3</ListItem>
+					<ListItem onClick={clickHandlers[3]}>4</ListItem>
 				</List>
-				<div>sibling</div>
+				<div onClick={clickHandlers[4]}>sibling</div>
 			</Fragment>,
 			scratch
 		);
 
 		expect(scratch.innerHTML).to.equal(html);
 		expect(getLog()).to.deep.equal([]);
+		expect(clickHandlers[2]).not.to.have.been.called;
+
+		scratch
+			.querySelector('li:nth-child(3)')
+			.dispatchEvent(createEvent('click'));
+
+		expect(clickHandlers[2]).to.have.been.calledOnce;
+		expect(clickHandlers[4]).not.to.have.been.called;
+
+		scratch.querySelector('div').dispatchEvent(createEvent('click'));
+
+		expect(clickHandlers[2]).to.have.been.calledOnce;
+		expect(clickHandlers[4]).to.have.been.calledOnce;
 	});
 
 	// Failing because the following condition in diffElementNodes doesn't evaluate to true
@@ -250,6 +349,10 @@ describe('hydrate()', () => {
 		);
 
 		hydrate(preactElement, scratch);
+		// IE11 doesn't support spies on built-in prototypes
+		if (!/Trident/.test(navigator.userAgent)) {
+			expect(attributesSpy.get).to.not.have.been.called;
+		}
 		expect(scratch).to.have.property(
 			'innerHTML',
 			'<div><a foo="bar"></a></div>'
@@ -275,5 +378,77 @@ describe('hydrate()', () => {
 
 		hydrate(<Component foo="bar" />, element);
 		expect(element.innerHTML).to.equal('<p>hello bar</p>');
+	});
+
+	it('should not remove values', () => {
+		scratch.innerHTML =
+			'<select><option value="0">Zero</option><option selected value="2">Two</option></select>';
+		const App = () => {
+			const options = [
+				{
+					value: '0',
+					label: 'Zero'
+				},
+				{
+					value: '2',
+					label: 'Two'
+				}
+			];
+
+			return (
+				<select value="2">
+					{options.map(({ disabled, label, value }) => (
+						<option key={label} disabled={disabled} value={value}>
+							{label}
+						</option>
+					))}
+				</select>
+			);
+		};
+
+		hydrate(<App />, scratch);
+		expect(sortAttributes(scratch.innerHTML)).to.equal(
+			sortAttributes(
+				'<select><option value="0">Zero</option><option selected="" value="2">Two</option></select>'
+			)
+		);
+	});
+
+	it('should deopt for trees introduced in hydrate (append)', () => {
+		scratch.innerHTML = '<div id="test"><p class="hi">hello bar</p></div>';
+		const Component = props => <p class="hi">hello {props.foo}</p>;
+		const element = document.getElementById('test');
+		hydrate(
+			<Fragment>
+				<Component foo="bar" />
+				<Component foo="baz" />
+			</Fragment>,
+			element
+		);
+		expect(element.innerHTML).to.equal(
+			'<p class="hi">hello bar</p><p class="hi">hello baz</p>'
+		);
+	});
+
+	it('should deopt for trees introduced in hydrate (insert before)', () => {
+		scratch.innerHTML = '<div id="test"><p class="hi">hello bar</p></div>';
+		const Component = props => <p class="hi">hello {props.foo}</p>;
+		const element = document.getElementById('test');
+		hydrate(
+			<Fragment>
+				<Component foo="baz" />
+				<Component foo="bar" />
+			</Fragment>,
+			element
+		);
+		expect(element.innerHTML).to.equal(
+			'<p class="hi">hello baz</p><p class="hi">hello bar</p>'
+		);
+	});
+
+	it('should skip comment nodes', () => {
+		scratch.innerHTML = '<p>hello <!-- c -->foo</p>';
+		hydrate(<p>hello {'foo'}</p>, scratch);
+		expect(scratch.innerHTML).to.equal('<p>hello foo</p>');
 	});
 });

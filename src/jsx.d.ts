@@ -1,35 +1,61 @@
+// Users who only use Preact for SSR might not specify "dom" in their lib in tsconfig.json
+/// <reference lib="dom" />
+
+import {
+	ClassAttributes,
+	Component,
+	PreactDOMAttributes,
+	VNode
+} from './index';
+
 type Defaultize<Props, Defaults> =
 	// Distribute over unions
 	Props extends any // Make any properties included in Default optional
-		? Partial<Pick<Props, Extract<keyof Props, keyof Defaults>>> &
-				// Include the remaining properties from Props
+		? Partial<Pick<Props, Extract<keyof Props, keyof Defaults>>> & // Include the remaining properties from Props
 				Pick<Props, Exclude<keyof Props, keyof Defaults>>
 		: never;
 
 export namespace JSXInternal {
-	type LibraryManagedAttributes<Component, Props> = Component extends {
+	export type LibraryManagedAttributes<Component, Props> = Component extends {
 		defaultProps: infer Defaults;
 	}
 		? Defaultize<Props, Defaults>
 		: Props;
 
-	interface IntrinsicAttributes {
+	export interface IntrinsicAttributes {
 		key?: any;
 	}
 
-	interface Element extends preact.VNode<any> {}
+	export interface Element extends VNode<any> {}
 
-	interface ElementClass extends preact.Component<any, any> {}
+	export interface ElementClass extends Component<any, any> {}
 
-	interface ElementAttributesProperty {
+	export interface ElementAttributesProperty {
 		props: any;
 	}
 
-	interface ElementChildrenAttribute {
+	export interface ElementChildrenAttribute {
 		children: any;
 	}
 
-	interface SVGAttributes<Target extends EventTarget = SVGElement>
+	export type DOMCSSProperties = {
+		[key in keyof Omit<
+			CSSStyleDeclaration,
+			| 'item'
+			| 'setProperty'
+			| 'removeProperty'
+			| 'getPropertyValue'
+			| 'getPropertyPriority'
+		>]?: string | number | null | undefined;
+	};
+	export type AllCSSProperties = {
+		[key: string]: string | number | null | undefined;
+	};
+	export interface CSSProperties extends AllCSSProperties, DOMCSSProperties {
+		cssText?: string | null;
+	}
+
+	export interface SVGAttributes<Target extends EventTarget = SVGElement>
 		extends HTMLAttributes<Target> {
 		accentHeight?: number | string;
 		accumulate?: 'none' | 'sum';
@@ -222,7 +248,7 @@ export namespace JSXInternal {
 		strokeDashoffset?: string | number;
 		strokeLinecap?: 'butt' | 'round' | 'square' | 'inherit';
 		strokeLinejoin?: 'miter' | 'round' | 'bevel' | 'inherit';
-		strokeMiterlimit?: string;
+		strokeMiterlimit?: string | number;
 		strokeOpacity?: number | string;
 		strokeWidth?: number | string;
 		surfaceScale?: number | string;
@@ -285,116 +311,112 @@ export namespace JSXInternal {
 		zoomAndPan?: string;
 	}
 
-	interface PathAttributes {
+	export interface PathAttributes {
 		d: string;
 	}
 
-	type TargetedEvent<
+	export type TargetedEvent<
 		Target extends EventTarget = EventTarget,
 		TypedEvent extends Event = Event
 	> = Omit<TypedEvent, 'currentTarget'> & {
 		readonly currentTarget: Target;
 	};
 
-	type TargetedAnimationEvent<Target extends EventTarget> = TargetedEvent<
-		Target,
-		AnimationEvent
-	>;
-	type TargetedClipboardEvent<Target extends EventTarget> = TargetedEvent<
-		Target,
-		ClipboardEvent
-	>;
-	type TargetedCompositionEvent<Target extends EventTarget> = TargetedEvent<
-		Target,
-		CompositionEvent
-	>;
-	type TargetedDragEvent<Target extends EventTarget> = TargetedEvent<
+	export type TargetedAnimationEvent<
+		Target extends EventTarget
+	> = TargetedEvent<Target, AnimationEvent>;
+	export type TargetedClipboardEvent<
+		Target extends EventTarget
+	> = TargetedEvent<Target, ClipboardEvent>;
+	export type TargetedCompositionEvent<
+		Target extends EventTarget
+	> = TargetedEvent<Target, CompositionEvent>;
+	export type TargetedDragEvent<Target extends EventTarget> = TargetedEvent<
 		Target,
 		DragEvent
 	>;
-	type TargetedFocusEvent<Target extends EventTarget> = TargetedEvent<
+	export type TargetedFocusEvent<Target extends EventTarget> = TargetedEvent<
 		Target,
 		FocusEvent
 	>;
-	type TargetedKeyboardEvent<Target extends EventTarget> = TargetedEvent<
+	export type TargetedKeyboardEvent<Target extends EventTarget> = TargetedEvent<
 		Target,
 		KeyboardEvent
 	>;
-	type TargetedMouseEvent<Target extends EventTarget> = TargetedEvent<
+	export type TargetedMouseEvent<Target extends EventTarget> = TargetedEvent<
 		Target,
 		MouseEvent
 	>;
-	type TargetedPointerEvent<Target extends EventTarget> = TargetedEvent<
+	export type TargetedPointerEvent<Target extends EventTarget> = TargetedEvent<
 		Target,
 		PointerEvent
 	>;
-	type TargetedTouchEvent<Target extends EventTarget> = TargetedEvent<
+	export type TargetedTouchEvent<Target extends EventTarget> = TargetedEvent<
 		Target,
 		TouchEvent
 	>;
-	type TargetedTransitionEvent<Target extends EventTarget> = TargetedEvent<
-		Target,
-		TransitionEvent
-	>;
-	type TargetedUIEvent<Target extends EventTarget> = TargetedEvent<
+	export type TargetedTransitionEvent<
+		Target extends EventTarget
+	> = TargetedEvent<Target, TransitionEvent>;
+	export type TargetedUIEvent<Target extends EventTarget> = TargetedEvent<
 		Target,
 		UIEvent
 	>;
-	type TargetedWheelEvent<Target extends EventTarget> = TargetedEvent<
+	export type TargetedWheelEvent<Target extends EventTarget> = TargetedEvent<
 		Target,
 		WheelEvent
 	>;
 
-	interface EventHandler<E extends TargetedEvent> {
+	export interface EventHandler<E extends TargetedEvent> {
 		/**
 		 * The `this` keyword always points to the DOM element the event handler
 		 * was invoked on. See: https://developer.mozilla.org/en-US/docs/Web/Guide/Events/Event_handlers#Event_handlers_parameters_this_binding_and_the_return_value
 		 */
-		(this: E['currentTarget'], event: E): void;
+		(this: never, event: E): void;
 	}
 
-	type AnimationEventHandler<Target extends EventTarget> = EventHandler<
+	export type AnimationEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedAnimationEvent<Target>
 	>;
-	type ClipboardEventHandler<Target extends EventTarget> = EventHandler<
+	export type ClipboardEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedClipboardEvent<Target>
 	>;
-	type CompositionEventHandler<Target extends EventTarget> = EventHandler<
-		TargetedCompositionEvent<Target>
-	>;
-	type DragEventHandler<Target extends EventTarget> = EventHandler<
+	export type CompositionEventHandler<
+		Target extends EventTarget
+	> = EventHandler<TargetedCompositionEvent<Target>>;
+	export type DragEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedDragEvent<Target>
 	>;
-	type FocusEventHandler<Target extends EventTarget> = EventHandler<
+	export type FocusEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedFocusEvent<Target>
 	>;
-	type GenericEventHandler<Target extends EventTarget> = EventHandler<
+	export type GenericEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedEvent<Target>
 	>;
-	type KeyboardEventHandler<Target extends EventTarget> = EventHandler<
+	export type KeyboardEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedKeyboardEvent<Target>
 	>;
-	type MouseEventHandler<Target extends EventTarget> = EventHandler<
+	export type MouseEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedMouseEvent<Target>
 	>;
-	type PointerEventHandler<Target extends EventTarget> = EventHandler<
+	export type PointerEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedPointerEvent<Target>
 	>;
-	type TouchEventHandler<Target extends EventTarget> = EventHandler<
+	export type TouchEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedTouchEvent<Target>
 	>;
-	type TransitionEventHandler<Target extends EventTarget> = EventHandler<
+	export type TransitionEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedTransitionEvent<Target>
 	>;
-	type UIEventHandler<Target extends EventTarget> = EventHandler<
+	export type UIEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedUIEvent<Target>
 	>;
-	type WheelEventHandler<Target extends EventTarget> = EventHandler<
+	export type WheelEventHandler<Target extends EventTarget> = EventHandler<
 		TargetedWheelEvent<Target>
 	>;
 
-	interface DOMAttributes<Target extends EventTarget>
-		extends preact.PreactDOMAttributes {
+	export interface DOMAttributes<Target extends EventTarget>
+		extends PreactDOMAttributes {
 		// Image Events
 		onLoad?: GenericEventHandler<Target>;
 		onLoadCapture?: GenericEventHandler<Target>;
@@ -441,7 +463,6 @@ export namespace JSXInternal {
 		onResetCapture?: GenericEventHandler<Target>;
 		onFormData?: GenericEventHandler<Target>;
 		onFormDataCapture?: GenericEventHandler<Target>;
-
 
 		// Keyboard Events
 		onKeyDown?: KeyboardEventHandler<Target>;
@@ -592,8 +613,8 @@ export namespace JSXInternal {
 		onTransitionEndCapture?: TransitionEventHandler<Target>;
 	}
 
-	interface HTMLAttributes<RefType extends EventTarget = EventTarget>
-		extends preact.ClassAttributes<RefType>,
+	export interface HTMLAttributes<RefType extends EventTarget = EventTarget>
+		extends ClassAttributes<RefType>,
 			DOMAttributes<RefType> {
 		// Standard HTML Attributes
 		accept?: string;
@@ -612,7 +633,7 @@ export namespace JSXInternal {
 		autofocus?: boolean;
 		autoFocus?: boolean;
 		autoPlay?: boolean;
-		capture?: boolean;
+		capture?: boolean | string;
 		cellPadding?: number | string;
 		cellSpacing?: number | string;
 		charSet?: string;
@@ -637,6 +658,7 @@ export namespace JSXInternal {
 		disabled?: boolean;
 		disableRemotePlayback?: boolean;
 		download?: any;
+		decoding?: 'sync' | 'async' | 'auto';
 		draggable?: boolean;
 		encType?: string;
 		form?: string;
@@ -666,6 +688,7 @@ export namespace JSXInternal {
 		label?: string;
 		lang?: string;
 		list?: string;
+		loading?: 'eager' | 'lazy';
 		loop?: boolean;
 		low?: number;
 		manifest?: string;
@@ -691,6 +714,7 @@ export namespace JSXInternal {
 		poster?: string;
 		preload?: string;
 		radioGroup?: string;
+		readonly?: boolean;
 		readOnly?: boolean;
 		rel?: string;
 		required?: boolean;
@@ -709,6 +733,7 @@ export namespace JSXInternal {
 		slot?: string;
 		span?: number;
 		spellcheck?: boolean;
+		spellCheck?: boolean;
 		src?: string;
 		srcset?: string;
 		srcDoc?: string;
@@ -716,7 +741,7 @@ export namespace JSXInternal {
 		srcSet?: string;
 		start?: number;
 		step?: number | string;
-		style?: string | { [key: string]: string | number };
+		style?: string | CSSProperties;
 		summary?: string;
 		tabIndex?: number;
 		target?: string;
@@ -728,6 +753,10 @@ export namespace JSXInternal {
 		width?: number | string;
 		wmode?: string;
 		wrap?: string;
+
+		// Non-standard Attributes
+		autocapitalize?: 'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters';
+		autoCapitalize?: 'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters';
 
 		// RDFa Attributes
 		about?: string;
@@ -747,7 +776,21 @@ export namespace JSXInternal {
 		itemRef?: string;
 	}
 
-	interface IntrinsicElements {
+	export interface HTMLMarqueeElement extends HTMLElement {
+		behavior?: 'scroll' | 'slide' | 'alternate';
+		bgColor?: string;
+		direction?: 'left' | 'right' | 'up' | 'down';
+		height?: number | string;
+		hspace?: number | string;
+		loop?: number | string;
+		scrollAmount?: number | string;
+		scrollDelay?: number | string;
+		trueSpeed?: boolean;
+		vspace?: number | string;
+		width?: number | string;
+	}
+
+	export interface IntrinsicElements {
 		// HTML
 		a: HTMLAttributes<HTMLAnchorElement>;
 		abbr: HTMLAttributes<HTMLElement>;
@@ -813,6 +856,7 @@ export namespace JSXInternal {
 		main: HTMLAttributes<HTMLElement>;
 		map: HTMLAttributes<HTMLMapElement>;
 		mark: HTMLAttributes<HTMLElement>;
+		marquee: HTMLAttributes<HTMLMarqueeElement>;
 		menu: HTMLAttributes<HTMLMenuElement>;
 		menuitem: HTMLAttributes<HTMLUnknownElement>;
 		meta: HTMLAttributes<HTMLMetaElement>;
@@ -868,6 +912,7 @@ export namespace JSXInternal {
 		svg: SVGAttributes<SVGSVGElement>;
 		animate: SVGAttributes<SVGAnimateElement>;
 		circle: SVGAttributes<SVGCircleElement>;
+		animateTransform: SVGAttributes<SVGAnimateElement>;
 		clipPath: SVGAttributes<SVGClipPathElement>;
 		defs: SVGAttributes<SVGDefsElement>;
 		desc: SVGAttributes<SVGDescElement>;
@@ -879,7 +924,12 @@ export namespace JSXInternal {
 		feConvolveMatrix: SVGAttributes<SVGFEConvolveMatrixElement>;
 		feDiffuseLighting: SVGAttributes<SVGFEDiffuseLightingElement>;
 		feDisplacementMap: SVGAttributes<SVGFEDisplacementMapElement>;
+		feDropShadow: SVGAttributes<SVGFEDropShadowElement>;
 		feFlood: SVGAttributes<SVGFEFloodElement>;
+		feFuncA: SVGAttributes<SVGFEFuncAElement>;
+		feFuncB: SVGAttributes<SVGFEFuncBElement>;
+		feFuncG: SVGAttributes<SVGFEFuncGElement>;
+		feFuncR: SVGAttributes<SVGFEFuncRElement>;
 		feGaussianBlur: SVGAttributes<SVGFEGaussianBlurElement>;
 		feImage: SVGAttributes<SVGFEImageElement>;
 		feMerge: SVGAttributes<SVGFEMergeElement>;

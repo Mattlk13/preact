@@ -23,6 +23,8 @@ import TextFields from './textFields';
 import ReduxBug from './reduxUpdate';
 import SuspenseRouterBug from './suspense-router';
 import NestedSuspenseBug from './nested-suspense';
+import Contenteditable from './contenteditable';
+import { MobXDemo } from './mobx';
 
 let isBenchmark = /(\/spiral|\/pythagoras|[#&]bench)/g.test(
 	window.location.href
@@ -112,6 +114,9 @@ class App extends Component {
 						<Link href="/redux" activeClassName="active">
 							Redux
 						</Link>
+						<Link href="/mobx" activeClassName="active">
+							MobX
+						</Link>
 						<Link href="/suspense" activeClassName="active">
 							Suspense / lazy
 						</Link>
@@ -126,6 +131,9 @@ class App extends Component {
 						</Link>
 						<Link href="/nested-suspense" activeClassName="active">
 							Nested Suspense Bug
+						</Link>
+						<Link href="/contenteditable" activeClassName="active">
+							contenteditable
 						</Link>
 					</nav>
 				</header>
@@ -151,10 +159,12 @@ class App extends Component {
 						<PeopleBrowser path="/people/:user?" />
 						<StyledComp path="/styled-components" />
 						<Redux path="/redux" />
+						<MobXDemo path="/mobx" />
 						<TextFields path="/textfields" />
 						<ReduxBug path="/reduxBug/:start" />
 						<SuspenseRouterBug path="/suspense-router" />
 						<NestedSuspenseBug path="/nested-suspense" />
+						<Contenteditable path="/contenteditable" />
 					</Router>
 				</main>
 			</div>

@@ -1,4 +1,7 @@
+import { slice } from './util';
 import options from './options';
+
+let vnodeId = 0;
 
 /**
  * Create an virtual node (used for JSX)
@@ -10,25 +13,23 @@ import options from './options';
  */
 export function createElement(type, props, children) {
 	let normalizedProps = {},
+		key,
+		ref,
 		i;
 	for (i in props) {
-		if (i !== 'key' && i !== 'ref') normalizedProps[i] = props[i];
+		if (i == 'key') key = props[i];
+		else if (i == 'ref') ref = props[i];
+		else normalizedProps[i] = props[i];
 	}
 
-	if (arguments.length > 3) {
-		children = [children];
-		// https://github.com/preactjs/preact/issues/1916
-		for (i = 3; i < arguments.length; i++) {
-			children.push(arguments[i]);
-		}
-	}
-	if (children != null) {
-		normalizedProps.children = children;
+	if (arguments.length > 2) {
+		normalizedProps.children =
+			arguments.length > 3 ? slice.call(arguments, 2) : children;
 	}
 
 	// If a Component VNode, check for and apply defaultProps
 	// Note: type may be undefined in development, must never error here.
-	if (typeof type === 'function' && type.defaultProps != null) {
+	if (typeof type == 'function' && type.defaultProps != null) {
 		for (i in type.defaultProps) {
 			if (normalizedProps[i] === undefined) {
 				normalizedProps[i] = type.defaultProps[i];
@@ -36,12 +37,7 @@ export function createElement(type, props, children) {
 		}
 	}
 
-	return createVNode(
-		type,
-		normalizedProps,
-		props && props.key,
-		props && props.ref
-	);
+	return createVNode(type, normalizedProps, key, ref, null);
 }
 
 /**
@@ -56,7 +52,7 @@ export function createElement(type, props, children) {
  * receive a reference to its created child
  * @returns {import('./internal').VNode}
  */
-export function createVNode(type, props, key, ref) {
+export function createVNode(type, props, key, ref, original) {
 	// V8 seems to be better at detecting type shapes if the object is allocated from the same call site
 	// Do not inline into createElement and coerceToVNode!
 	const vnode = {
@@ -74,16 +70,18 @@ export function createVNode(type, props, key, ref) {
 		// a _nextDom that has been set to `null`
 		_nextDom: undefined,
 		_component: null,
-		constructor: undefined
+		_hydrating: null,
+		constructor: undefined,
+		_original: original == null ? ++vnodeId : original
 	};
 
-	if (options.vnode) options.vnode(vnode);
+	if (options.vnode != null) options.vnode(vnode);
 
 	return vnode;
 }
 
 export function createRef() {
-	return {};
+	return { current: null };
 }
 
 export function Fragment(props) {
